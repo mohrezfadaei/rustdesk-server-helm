@@ -1,0 +1,9 @@
+theme: jekyll-theme-cayman
+
+title: RustDesk Server
+description: Helm chart for self-hosting RustDesk Server on Kubernetes
+show_downloads: false
+
+# Both replaced by .github/workflows/release.yaml at publish time
+chart_version: 0.0.0
+chart_repo_url: ""

@@ -63,6 +63,9 @@ jobs:
             git -C pages rm -rf . >/dev/null 2>&1 || true
           fi
           cp dist/*.tgz pages/
+          cp -R .github/pages/. pages/
+          sed -i "s|^chart_version:.*|chart_version: $GITHUB_REF_NAME|" pages/_config.yml
+          sed -i "s|^chart_repo_url:.*|chart_repo_url: $PAGES_URL|" pages/_config.yml
           cd pages
           if [ -f index.yaml ]; then
             helm repo index . --url "$PAGES_URL" --merge index.yaml

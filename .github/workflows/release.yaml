@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: package and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CHART_DIR: charts/rustdesk-server
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.20.2
+
+      - name: Sync chart version with tag
+        id: version
+        run: |
+          current="$(grep -m1 '^version:' "$CHART_DIR/Chart.yaml" | awk '{print $2}')"
+          echo "Chart version: $current, tag: $GITHUB_REF_NAME"
+          if [ "$current" = "$GITHUB_REF_NAME" ]; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            sed -i "s|^version:.*|version: $GITHUB_REF_NAME|" "$CHART_DIR/Chart.yaml"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint chart
+        run: helm lint "$CHART_DIR" --strict
+
+      - name: Package chart
+        run: helm package "$CHART_DIR" --destination dist
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Publish to gh-pages
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git worktree add --detach pages origin/gh-pages
+          else
+            git worktree add --detach pages
+            git -C pages checkout --orphan gh-pages
+            git -C pages rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp dist/*.tgz pages/
+          cd pages
+          if [ -f index.yaml ]; then
+            helm repo index . --url "$PAGES_URL" --merge index.yaml
+          else
+            helm repo index . --url "$PAGES_URL"
+          fi
+          git add -A
+          git commit -m "chore: publish rustdesk-server $GITHUB_REF_NAME"
+          git push origin "HEAD:refs/heads/gh-pages"
+
+      - name: Commit version bump to ${{ github.event.repository.default_branch }}
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          git fetch origin "$DEFAULT_BRANCH"
+          git worktree add --detach branch "origin/$DEFAULT_BRANCH"
+          sed -i "s|^version:.*|version: $GITHUB_REF_NAME|" "branch/$CHART_DIR/Chart.yaml"
+          cd branch
+          if git diff --quiet; then
+            echo "Chart.yaml already at $GITHUB_REF_NAME on $DEFAULT_BRANCH"
+            exit 0
+          fi
+          git add "$CHART_DIR/Chart.yaml"
+          git commit -m "chore(chart): set version to $GITHUB_REF_NAME"
+          git push origin "HEAD:refs/heads/$DEFAULT_BRANCH"

@@ -1,0 +1,80 @@
+{{- if and .Values.hbbs.enabled .Values.hbbs.ingress.enabled }}
+{{- if not .Values.hbbs.websocket.enabled }}
+{{- fail "hbbs.ingress.enabled requires hbbs.websocket.enabled: the ingress can only route the WebSocket port, and it is not exposed." }}
+{{- end }}
+{{- $ingress := .Values.hbbs.ingress }}
+apiVersion: {{ $ingress.apiVersion | default "networking.k8s.io/v1" }}
+kind: Ingress
+metadata:
+  name: {{ include "rustdesk-server.hbbs.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" "hbbs" "context" $) | nindent 4 }}
+    {{- with $ingress.labels }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- if or $ingress.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- with $ingress.annotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+    {{- with .Values.commonAnnotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- with $ingress.ingressClassName }}
+  ingressClassName: {{ tpl . $ | quote }}
+  {{- end }}
+  rules:
+    {{- with $ingress.hostname }}
+    - host: {{ tpl . $ | quote }}
+      http:
+        paths:
+          {{- with $ingress.extraPaths }}
+          {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 10 }}
+          {{- end }}
+          - path: {{ tpl $ingress.path $ }}
+            pathType: {{ $ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "rustdesk-server.hbbs.fullname" $ }}
+                port:
+                  name: ws-rendezvous
+    {{- end }}
+    {{- range $ingress.extraHosts }}
+    - host: {{ tpl .name $ | quote }}
+      http:
+        paths:
+          - path: {{ default "/" .path }}
+            pathType: {{ default $ingress.pathType .pathType }}
+            backend:
+              service:
+                name: {{ include "rustdesk-server.hbbs.fullname" $ }}
+                port:
+                  name: ws-rendezvous
+    {{- end }}
+  {{- if or (and $ingress.tls $ingress.hostname) $ingress.extraTls }}
+  tls:
+    {{- if and $ingress.tls $ingress.hostname }}
+    - hosts:
+        - {{ tpl $ingress.hostname $ | quote }}
+      secretName: {{ printf "%s-tls" (tpl $ingress.hostname $) }}
+    {{- end }}
+    {{- with $ingress.extraTls }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- range $ingress.secrets }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ tpl .name $ }}
+  namespace: {{ include "rustdesk-server.namespace" $ | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" "hbbs" "context" $) | nindent 4 }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ tpl .certificate $ | b64enc | quote }}
+  tls.key: {{ tpl .key $ | b64enc | quote }}
+{{- end }}
+{{- end }}

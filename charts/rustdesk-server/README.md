@@ -110,6 +110,35 @@ hbbr:
     enabled: true
 ```
 
+The WebSocket ports are the only HTTP-shaped surface RustDesk exposes, so they are also the only ones an Ingress can serve. Enabling `hbbs.ingress` / `hbbr.ingress` puts a controller in front of them, which is how the web client gets WSS:
+
+```yaml
+hbbs:
+  websocket:
+    enabled: true
+  ingress:
+    enabled: true
+    hostname: rd.example.com
+    ingressClassName: nginx
+    tls: true
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+hbbr:
+  websocket:
+    enabled: true
+  ingress:
+    enabled: true
+    hostname: relay.example.com
+    ingressClassName: nginx
+    tls: true
+```
+
+Enabling an ingress without the matching `websocket.enabled` fails the render, because the backend port would not exist. Restrict ports 21118/21119 to the controller with a NetworkPolicy or firewall rule once the ingress is in place — reaching them directly still bypasses the proxy and its `X-Real-IP` header.
+
+The rendezvous, NAT test, relay and UDP ports cannot use an Ingress: the API models only HTTP routing, and 21116/UDP has no representation in it at all. Those stay on `hbbs.service` / `hbbr.service`.
+
 ### Forcing relayed connections
 
 To disable direct connections entirely and route every session through `hbbr`:
@@ -277,6 +306,19 @@ alwaysUseRelay: true
 | `hbbs.service.sessionAffinity` | Control where client requests go, to the same pod or round-robin | `None` |
 | `hbbs.service.sessionAffinityConfig` | Additional settings for the sessionAffinity | `{}` |
 | `hbbs.service.annotations` | Additional custom annotations for the hbbs service | `{}` |
+| `hbbs.ingress.enabled` | Enable ingress record generation for the hbbs WebSocket port | `false` |
+| `hbbs.ingress.pathType` | Ingress path type | `ImplementationSpecific` |
+| `hbbs.ingress.apiVersion` | Force Ingress API version (automatically detected if not set) | `""` |
+| `hbbs.ingress.hostname` | Default host for the ingress record (evaluated as template) | `hbbs.local` |
+| `hbbs.ingress.ingressClassName` | IngressClass that will be used to implement the Ingress (evaluated as template) | `""` |
+| `hbbs.ingress.path` | Default path for the ingress record (evaluated as template) | `/` |
+| `hbbs.ingress.annotations` | Additional annotations for the Ingress resource | `{}` |
+| `hbbs.ingress.labels` | Additional labels for the Ingress resource | `{}` |
+| `hbbs.ingress.tls` | Enable TLS for `hbbs.ingress.hostname`, using a Secret named `<hostname>-tls` | `false` |
+| `hbbs.ingress.extraHosts` | The list of additional hostnames to be covered with this ingress record | `[]` |
+| `hbbs.ingress.extraPaths` | Any additional paths that may need to be added to the ingress under the main host | `[]` |
+| `hbbs.ingress.extraTls` | The tls configuration for additional hostnames to be covered with this ingress record | `[]` |
+| `hbbs.ingress.secrets` | Custom TLS certificates as secrets | `[]` |
 | `hbbs.pdb.create` | Enable/disable a Pod Disruption Budget creation for hbbs | `true` |
 | `hbbs.pdb.minAvailable` | Minimum number/percentage of hbbs pods that should remain scheduled | `""` |
 | `hbbs.pdb.maxUnavailable` | Maximum number/percentage of hbbs pods that may be made unavailable. Defaults to `1` if both `hbbs.pdb.minAvailable` and `hbbs.pdb.maxUnavailable` are empty. | `""` |
@@ -392,6 +434,19 @@ alwaysUseRelay: true
 | `hbbr.service.sessionAffinity` | Control where client requests go, to the same pod or round-robin | `None` |
 | `hbbr.service.sessionAffinityConfig` | Additional settings for the sessionAffinity | `{}` |
 | `hbbr.service.annotations` | Additional custom annotations for the hbbr service | `{}` |
+| `hbbr.ingress.enabled` | Enable ingress record generation for the hbbr WebSocket port | `false` |
+| `hbbr.ingress.pathType` | Ingress path type | `ImplementationSpecific` |
+| `hbbr.ingress.apiVersion` | Force Ingress API version (automatically detected if not set) | `""` |
+| `hbbr.ingress.hostname` | Default host for the ingress record (evaluated as template) | `hbbr.local` |
+| `hbbr.ingress.ingressClassName` | IngressClass that will be used to implement the Ingress (evaluated as template) | `""` |
+| `hbbr.ingress.path` | Default path for the ingress record (evaluated as template) | `/` |
+| `hbbr.ingress.annotations` | Additional annotations for the Ingress resource | `{}` |
+| `hbbr.ingress.labels` | Additional labels for the Ingress resource | `{}` |
+| `hbbr.ingress.tls` | Enable TLS for `hbbr.ingress.hostname`, using a Secret named `<hostname>-tls` | `false` |
+| `hbbr.ingress.extraHosts` | The list of additional hostnames to be covered with this ingress record | `[]` |
+| `hbbr.ingress.extraPaths` | Any additional paths that may need to be added to the ingress under the main host | `[]` |
+| `hbbr.ingress.extraTls` | The tls configuration for additional hostnames to be covered with this ingress record | `[]` |
+| `hbbr.ingress.secrets` | Custom TLS certificates as secrets | `[]` |
 | `hbbr.pdb.create` | Enable/disable a Pod Disruption Budget creation for hbbr | `true` |
 | `hbbr.pdb.minAvailable` | Minimum number/percentage of hbbr pods that should remain scheduled | `""` |
 | `hbbr.pdb.maxUnavailable` | Maximum number/percentage of hbbr pods that may be made unavailable. Defaults to `1` if both `hbbr.pdb.minAvailable` and `hbbr.pdb.maxUnavailable` are empty. | `""` |

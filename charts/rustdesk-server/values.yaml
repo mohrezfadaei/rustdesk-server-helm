@@ -475,6 +475,72 @@ hbbs:
     ## @param hbbs.service.annotations Additional custom annotations for the hbbs service
     ##
     annotations: {}
+  ## hbbs WebSocket ingress parameters
+  ## Only the WebSocket port (hbbs.containerPorts.websocket) speaks HTTP and can be exposed this
+  ## way. The rendezvous, NAT test and UDP ports need `hbbs.service`, because the Ingress API models neither raw TCP nor UDP.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+  ##
+  ingress:
+    ## @param hbbs.ingress.enabled Enable ingress record generation for the hbbs WebSocket port
+    ## Requires `hbbs.websocket.enabled`. Terminating TLS here is how the web client gets WSS.
+    ## The proxy must set X-Real-IP itself, and port 21118 should be reachable only from the
+    ## proxy, since hbbs trusts that header without validating it.
+    ##
+    enabled: false
+    ## @param hbbs.ingress.pathType Ingress path type
+    ##
+    pathType: ImplementationSpecific
+    ## @param hbbs.ingress.apiVersion Force Ingress API version (automatically detected if not set)
+    ##
+    apiVersion: ""
+    ## @param hbbs.ingress.hostname Default host for the ingress record (evaluated as template)
+    ##
+    hostname: hbbs.local
+    ## @param hbbs.ingress.ingressClassName IngressClass that will be used to implement the Ingress (evaluated as template)
+    ##
+    ingressClassName: ""
+    ## @param hbbs.ingress.path Default path for the ingress record (evaluated as template)
+    ##
+    path: /
+    ## @param hbbs.ingress.annotations Additional annotations for the Ingress resource
+    ## Most controllers need an explicit WebSocket upgrade or a longer read timeout here, e.g. for
+    ## ingress-nginx:
+    ## annotations:
+    ##   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    ##   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    ##
+    annotations: {}
+    ## @param hbbs.ingress.labels Additional labels for the Ingress resource
+    ##
+    labels: {}
+    ## @param hbbs.ingress.tls Enable TLS for `hbbs.ingress.hostname`, using a Secret named `<hostname>-tls`
+    ## Create that Secret yourself, list it in `hbbs.ingress.secrets`, or let cert-manager issue it
+    ## from an annotation.
+    ##
+    tls: false
+    ## @param hbbs.ingress.extraHosts The list of additional hostnames to be covered with this ingress record
+    ## e.g:
+    ## extraHosts:
+    ##   - name: hbbs.local
+    ##     path: /
+    ##
+    extraHosts: []
+    ## @param hbbs.ingress.extraPaths Any additional paths that may need to be added to the ingress under the main host
+    ##
+    extraPaths: []
+    ## @param hbbs.ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record
+    ##
+    extraTls: []
+    ## @param hbbs.ingress.secrets Custom TLS certificates as secrets
+    ## e.g:
+    ## secrets:
+    ##   - name: hbbs.local-tls
+    ##     certificate: |-
+    ##       -----BEGIN CERTIFICATE-----
+    ##     key: |-
+    ##       -----BEGIN RSA PRIVATE KEY-----
+    ##
+    secrets: []
   ## hbbs pod disruption budget
   ## @param hbbs.pdb.create Enable/disable a Pod Disruption Budget creation for hbbs
   ## @param hbbs.pdb.minAvailable Minimum number/percentage of hbbs pods that should remain scheduled
@@ -789,6 +855,72 @@ hbbr:
     ## @param hbbr.service.annotations Additional custom annotations for the hbbr service
     ##
     annotations: {}
+  ## hbbr WebSocket ingress parameters
+  ## Only the WebSocket port (hbbr.containerPorts.websocket) speaks HTTP and can be exposed this
+  ## way. The relay port need `hbbr.service`, because the Ingress API models neither raw TCP nor UDP.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+  ##
+  ingress:
+    ## @param hbbr.ingress.enabled Enable ingress record generation for the hbbr WebSocket port
+    ## Requires `hbbr.websocket.enabled`. Terminating TLS here is how the web client gets WSS.
+    ## The proxy must set X-Real-IP itself, and port 21119 should be reachable only from the
+    ## proxy, since hbbr trusts that header without validating it.
+    ##
+    enabled: false
+    ## @param hbbr.ingress.pathType Ingress path type
+    ##
+    pathType: ImplementationSpecific
+    ## @param hbbr.ingress.apiVersion Force Ingress API version (automatically detected if not set)
+    ##
+    apiVersion: ""
+    ## @param hbbr.ingress.hostname Default host for the ingress record (evaluated as template)
+    ##
+    hostname: hbbr.local
+    ## @param hbbr.ingress.ingressClassName IngressClass that will be used to implement the Ingress (evaluated as template)
+    ##
+    ingressClassName: ""
+    ## @param hbbr.ingress.path Default path for the ingress record (evaluated as template)
+    ##
+    path: /
+    ## @param hbbr.ingress.annotations Additional annotations for the Ingress resource
+    ## Most controllers need an explicit WebSocket upgrade or a longer read timeout here, e.g. for
+    ## ingress-nginx:
+    ## annotations:
+    ##   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    ##   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    ##
+    annotations: {}
+    ## @param hbbr.ingress.labels Additional labels for the Ingress resource
+    ##
+    labels: {}
+    ## @param hbbr.ingress.tls Enable TLS for `hbbr.ingress.hostname`, using a Secret named `<hostname>-tls`
+    ## Create that Secret yourself, list it in `hbbr.ingress.secrets`, or let cert-manager issue it
+    ## from an annotation.
+    ##
+    tls: false
+    ## @param hbbr.ingress.extraHosts The list of additional hostnames to be covered with this ingress record
+    ## e.g:
+    ## extraHosts:
+    ##   - name: hbbr.local
+    ##     path: /
+    ##
+    extraHosts: []
+    ## @param hbbr.ingress.extraPaths Any additional paths that may need to be added to the ingress under the main host
+    ##
+    extraPaths: []
+    ## @param hbbr.ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record
+    ##
+    extraTls: []
+    ## @param hbbr.ingress.secrets Custom TLS certificates as secrets
+    ## e.g:
+    ## secrets:
+    ##   - name: hbbr.local-tls
+    ##     certificate: |-
+    ##       -----BEGIN CERTIFICATE-----
+    ##     key: |-
+    ##       -----BEGIN RSA PRIVATE KEY-----
+    ##
+    secrets: []
   ## @param hbbr.pdb.create Enable/disable a Pod Disruption Budget creation for hbbr
   ## @param hbbr.pdb.minAvailable Minimum number/percentage of hbbr pods that should remain scheduled
   ## @param hbbr.pdb.maxUnavailable Maximum number/percentage of hbbr pods that may be made unavailable. Defaults to `1` if both `hbbr.pdb.minAvailable` and `hbbr.pdb.maxUnavailable` are empty.

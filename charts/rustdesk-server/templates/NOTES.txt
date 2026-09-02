@@ -1,0 +1,120 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{- if .Values.diagnosticMode.enabled }}
+
+Diagnostic mode is enabled. All probes are disabled and the containers are running
+{{ join " " .Values.diagnosticMode.command }} {{ join " " .Values.diagnosticMode.args }} instead of the servers.
+
+{{- else }}
+
+Configure your RustDesk clients under Settings -> Network with the values below.
+
+1. ID Server
+
+{{- if .Values.hbbs.enabled }}
+{{- if eq .Values.hbbs.service.type "LoadBalancer" }}
+
+   Watch for the load balancer address to be assigned:
+
+     kubectl get svc -n {{ include "rustdesk-server.namespace" . }} -w {{ include "rustdesk-server.hbbs.fullname" . }}
+
+     export HBBS_IP=$(kubectl get svc -n {{ include "rustdesk-server.namespace" . }} {{ include "rustdesk-server.hbbs.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+     echo "ID Server: $HBBS_IP:{{ .Values.hbbs.service.ports.main }}"
+{{- else if eq .Values.hbbs.service.type "NodePort" }}
+
+     export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+     export NODE_PORT=$(kubectl get svc -n {{ include "rustdesk-server.namespace" . }} {{ include "rustdesk-server.hbbs.fullname" . }} -o jsonpath='{.spec.ports[?(@.name=="rendezvous-tcp")].nodePort}')
+     echo "ID Server: $NODE_IP:$NODE_PORT"
+{{- else }}
+
+   hbbs is exposed as a {{ .Values.hbbs.service.type }} service, reachable only from inside the cluster at:
+
+     {{ include "rustdesk-server.hbbs.fullname" . }}.{{ include "rustdesk-server.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.hbbs.service.ports.main }}
+
+   Clients outside the cluster need hbbs.service.type set to LoadBalancer or NodePort.
+{{- end }}
+{{- end }}
+
+2. Key
+
+{{- if .Values.auth.existingSecret }}
+
+     kubectl get secret -n {{ include "rustdesk-server.namespace" . }} {{ include "rustdesk-server.secretName" . }} -o jsonpath='{.data.{{ .Values.auth.publicKeySecretKey }}}' | base64 -d
+{{- else if include "rustdesk-server.createKeySecret" . }}
+
+     kubectl get secret -n {{ include "rustdesk-server.namespace" . }} {{ include "rustdesk-server.secretName" . }} -o jsonpath='{.data.{{ .Values.auth.publicKeySecretKey }}}' | base64 -d
+{{- else }}
+
+   hbbs generated a key pair on first start. The server image contains no shell, so read the
+   public key by mounting its volume in a temporary pod:
+
+     kubectl run rustdesk-key -n {{ include "rustdesk-server.namespace" . }} --rm -i --restart=Never \
+       --image=busybox --overrides='{"spec":{"containers":[{"name":"k","image":"busybox","command":["cat","/data/id_ed25519.pub"],"volumeMounts":[{"name":"d","mountPath":"/data"}]}],"volumes":[{"name":"d","persistentVolumeClaim":{"claimName":"data-{{ include "rustdesk-server.hbbs.fullname" . }}-0"}}]}}'
+
+   Set auth.existingSecret to manage the key pair yourself instead.
+{{- end }}
+
+3. Relay Server
+
+{{- with (include "rustdesk-server.relayServers" .) }}
+
+   Clients are told to relay through {{ . }}. Leave the client's Relay Server field blank.
+{{- else }}
+
+   No relay address is configured, so clients derive it from the ID Server address on port
+   {{ .Values.hbbr.service.ports.relay }}. Set relayServers when hbbr has its own address.
+{{- end }}
+
+
+{{- if or (and .Values.hbbs.enabled .Values.hbbs.ingress.enabled) (and .Values.hbbr.enabled .Values.hbbr.ingress.enabled) }}
+
+4. Web client
+
+   The WebSocket ports are served through an ingress at:
+{{- if and .Values.hbbs.enabled .Values.hbbs.ingress.enabled }}
+
+     {{ ternary "wss" "ws" .Values.hbbs.ingress.tls }}://{{ tpl .Values.hbbs.ingress.hostname . }}{{ tpl .Values.hbbs.ingress.path . }}   (hbbs rendezvous)
+{{- end }}
+{{- if and .Values.hbbr.enabled .Values.hbbr.ingress.enabled }}
+
+     {{ ternary "wss" "ws" .Values.hbbr.ingress.tls }}://{{ tpl .Values.hbbr.ingress.hostname . }}{{ tpl .Values.hbbr.ingress.path . }}   (hbbr relay)
+{{- end }}
+
+   Restrict ports {{ .Values.hbbs.containerPorts.websocket }} and {{ .Values.hbbr.containerPorts.websocket }} to the ingress controller. Reaching them directly bypasses
+   the proxy and the X-Real-IP header it sets.
+{{- end }}
+
+{{- end }}
+
+{{- $warnings := list }}
+
+{{- if and .Values.hbbs.enabled (not (include "rustdesk-server.hasKeys" .)) (not .Values.hbbs.persistence.enabled) }}
+{{- $warnings = append $warnings "hbbs.persistence.enabled=false and no key pair was supplied. hbbs generates a new key pair every time the pod is recreated, and every client configured with the old key stops connecting. Set auth.existingSecret or enable persistence." }}
+{{- end }}
+
+{{- if and .Values.hbbr.enabled .Values.auth.relayKeyValidation (not (include "rustdesk-server.hasKeys" .)) }}
+{{- $warnings = append $warnings "auth.relayKeyValidation=true has no effect because no key pair was supplied. hbbr is running with its upstream default of an empty key, so it accepts relay clients without validating a key. Set auth.existingSecret to enable validation." }}
+{{- end }}
+
+{{- if and .Values.hbbs.enabled .Values.hbbr.enabled (not (include "rustdesk-server.relayServers" .)) (eq .Values.hbbr.service.type "LoadBalancer") }}
+{{- $warnings = append $warnings "relayServers is empty while hbbr has its own LoadBalancer service. Clients derive the relay address from the ID Server address, which points at hbbs, so relayed sessions will fail. Set relayServers to the hbbr address." }}
+{{- end }}
+
+{{- if or (and .Values.hbbs.enabled .Values.hbbs.websocket.enabled) (and .Values.hbbr.enabled .Values.hbbr.websocket.enabled) }}
+{{- $warnings = append $warnings "The WebSocket ports are exposed. hbbs and hbbr trust the X-Real-IP and X-Forwarded-For headers of WebSocket connections without validating them, so anyone able to reach these ports directly can forge a client IP. Expose them only through a reverse proxy that sets X-Real-IP itself." }}
+{{- end }}
+
+{{- if and .Values.hbbr.enabled (gt (int .Values.hbbr.replicaCount) 1) (eq .Values.hbbr.service.sessionAffinity "None") }}
+{{- $warnings = append $warnings "hbbr.replicaCount is greater than 1 with hbbr.service.sessionAffinity=None. Both peers of a session must reach the same replica, so sessions will break. Set hbbr.service.sessionAffinity=ClientIP." }}
+{{- end }}
+
+{{- if $warnings }}
+
+WARNINGS:
+{{- range $warnings }}
+
+  - {{ . }}
+{{- end }}
+{{- end }}

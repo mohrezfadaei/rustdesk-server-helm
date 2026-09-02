@@ -2,8 +2,6 @@
 
 [RustDesk Server](https://github.com/rustdesk/rustdesk-server) is the self-hosted backend for RustDesk, the open-source remote desktop application.
 
-> **Status:** the chart templates are not implemented yet. The parameters below are the chart's values contract; `helm install` will not deploy anything until the templates land.
-
 ## TL;DR
 
 ```console

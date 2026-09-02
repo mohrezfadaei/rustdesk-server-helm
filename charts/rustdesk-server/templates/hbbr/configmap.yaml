@@ -1,0 +1,24 @@
+{{- if and .Values.hbbr.enabled (or .Values.hbbr.blacklist .Values.hbbr.blocklist) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rustdesk-server.hbbr.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" "hbbr" "context" $) | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+  {{- end }}
+data:
+  {{- with .Values.hbbr.blacklist }}
+  blacklist.txt: |
+    {{- range . }}
+    {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- with .Values.hbbr.blocklist }}
+  blocklist.txt: |
+    {{- range . }}
+    {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}

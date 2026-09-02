@@ -1,0 +1,78 @@
+{{- if .Values.hbbs.enabled }}
+{{- $component := "hbbs" }}
+{{- $hbbs := .Values.hbbs }}
+{{- $service := $hbbs.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rustdesk-server.hbbs.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" $component "context" $) | nindent 4 }}
+  {{- if or $service.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- with $service.annotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+    {{- with .Values.commonAnnotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ $service.type }}
+  {{- with $service.clusterIP }}
+  clusterIP: {{ . }}
+  {{- end }}
+  {{- if eq $service.type "LoadBalancer" }}
+  {{- with $service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with $service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}
+  {{- with $service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- if or (eq $service.type "LoadBalancer") (eq $service.type "NodePort") }}
+  externalTrafficPolicy: {{ $service.externalTrafficPolicy | quote }}
+  {{- end }}
+  sessionAffinity: {{ $service.sessionAffinity }}
+  {{- with $service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: nat-test
+      port: {{ $service.ports.nat | int64 }}
+      targetPort: nat-test
+      protocol: TCP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.nat }}
+      nodePort: {{ $service.nodePorts.nat | int64 }}
+      {{- end }}
+    - name: rendezvous-tcp
+      port: {{ $service.ports.main | int64 }}
+      targetPort: rendezvous-tcp
+      protocol: TCP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.mainTCP }}
+      nodePort: {{ $service.nodePorts.mainTCP | int64 }}
+      {{- end }}
+    - name: rendezvous-udp
+      port: {{ $service.ports.main | int64 }}
+      targetPort: rendezvous-udp
+      protocol: UDP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.mainUDP }}
+      nodePort: {{ $service.nodePorts.mainUDP | int64 }}
+      {{- end }}
+    {{- if $hbbs.websocket.enabled }}
+    - name: ws-rendezvous
+      port: {{ $service.ports.websocket | int64 }}
+      targetPort: ws-rendezvous
+      protocol: TCP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.websocket }}
+      nodePort: {{ $service.nodePorts.websocket | int64 }}
+      {{- end }}
+    {{- end }}
+    {{- with $service.extraPorts }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  selector: {{- include "rustdesk-server.selectorLabels" (dict "component" $component "context" $) | nindent 4 }}
+{{- end }}

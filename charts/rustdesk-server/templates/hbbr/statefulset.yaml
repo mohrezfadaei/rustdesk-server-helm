@@ -1,0 +1,276 @@
+{{- if .Values.hbbr.enabled }}
+{{- $component := "hbbr" }}
+{{- $hbbr := .Values.hbbr }}
+{{- $mountKeys := and (include "rustdesk-server.hasKeys" .) .Values.auth.relayKeyValidation }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "rustdesk-server.hbbr.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" $component "context" $) | nindent 4 }}
+  {{- if or $hbbr.statefulsetAnnotations .Values.commonAnnotations }}
+  annotations:
+    {{- with $hbbr.statefulsetAnnotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+    {{- with .Values.commonAnnotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  replicas: {{ $hbbr.replicaCount }}
+  revisionHistoryLimit: {{ $hbbr.revisionHistoryLimitCount }}
+  podManagementPolicy: {{ $hbbr.podManagementPolicy }}
+  serviceName: {{ include "rustdesk-server.hbbr.fullname" . }}
+  updateStrategy:
+    type: {{ $hbbr.updateStrategy.type }}
+  selector:
+    matchLabels: {{- include "rustdesk-server.selectorLabels" (dict "component" $component "context" $) | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "rustdesk-server.labels" (dict "component" $component "context" $) | nindent 8 }}
+        {{- with $hbbr.podLabels }}
+        {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if include "rustdesk-server.createKeySecret" . }}
+        checksum/keys: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or $hbbr.blacklist $hbbr.blocklist }}
+        checksum/lists: {{ include (print $.Template.BasePath "/hbbr/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with $hbbr.podAnnotations }}
+        {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+        {{- with .Values.commonAnnotations }}
+        {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "rustdesk-server.serviceAccountName" . }}
+      automountServiceAccountToken: {{ $hbbr.automountServiceAccountToken }}
+      {{- with (include "rustdesk-server.imagePullSecrets" . | trim) }}
+      {{- . | nindent 6 }}
+      {{- end }}
+      {{- if $hbbr.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      {{- with $hbbr.dnsPolicy }}
+      dnsPolicy: {{ . }}
+      {{- end }}
+      {{- with $hbbr.dnsConfig }}
+      dnsConfig: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.hostAliases }}
+      hostAliases: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with $hbbr.schedulerName }}
+      schedulerName: {{ . | quote }}
+      {{- end }}
+      {{- with $hbbr.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      {{- if $hbbr.podSecurityContext.enabled }}
+      securityContext: {{- include "rustdesk-server.securityContext" (dict "secContext" $hbbr.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with (include "rustdesk-server.affinity" (dict "component" $component "values" $hbbr "context" $) | trim) }}
+      affinity: {{- . | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.nodeSelector }}
+      nodeSelector: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.tolerations }}
+      tolerations: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with $hbbr.initContainers }}
+      initContainers: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: hbbr
+          image: {{ include "rustdesk-server.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          workingDir: {{ $hbbr.workingDir | quote }}
+          {{- if $hbbr.containerSecurityContext.enabled }}
+          securityContext: {{- include "rustdesk-server.securityContext" (dict "secContext" $hbbr.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "rustdesk-server.tplvalues" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          args: {{- include "rustdesk-server.tplvalues" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else }}
+          command:
+            {{- if $hbbr.command }}
+            {{- include "rustdesk-server.tplvalues" (dict "value" $hbbr.command "context" $) | nindent 12 }}
+            {{- else }}
+            - /usr/bin/hbbr
+            {{- end }}
+          args:
+            {{- if $hbbr.args }}
+            {{- include "rustdesk-server.tplvalues" (dict "value" $hbbr.args "context" $) | nindent 12 }}
+            {{- else }}
+            - -p
+            - {{ $hbbr.containerPorts.relay | int64 | quote }}
+            {{- with $hbbr.bind }}
+            - -b
+            - {{ . | quote }}
+            {{- end }}
+            {{- if $mountKeys }}
+            - -k
+            - _
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.logLevel | quote }}
+            - name: SINGLE_BANDWIDTH
+              value: {{ $hbbr.bandwidth.singleBandwidth | int64 | quote }}
+            - name: TOTAL_BANDWIDTH
+              value: {{ $hbbr.bandwidth.totalBandwidth | int64 | quote }}
+            - name: LIMIT_SPEED
+              value: {{ $hbbr.bandwidth.limitSpeed | int64 | quote }}
+            - name: DOWNGRADE_THRESHOLD
+              value: {{ $hbbr.bandwidth.downgradeThreshold | quote }}
+            - name: DOWNGRADE_START_CHECK
+              value: {{ $hbbr.bandwidth.downgradeStartCheck | int64 | quote }}
+            {{- with $hbbr.extraEnvVars }}
+            {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if or $hbbr.extraEnvVarsCM $hbbr.extraEnvVarsSecret }}
+          envFrom:
+            {{- with $hbbr.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ tpl . $ }}
+            {{- end }}
+            {{- with $hbbr.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ tpl . $ }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: relay
+              containerPort: {{ $hbbr.containerPorts.relay | int64 }}
+              protocol: TCP
+            {{- if $hbbr.websocket.enabled }}
+            - name: ws-relay
+              containerPort: {{ $hbbr.containerPorts.websocket | int64 }}
+              protocol: TCP
+            {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if $hbbr.customLivenessProbe }}
+          livenessProbe: {{- include "rustdesk-server.tplvalues" (dict "value" $hbbr.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if $hbbr.livenessProbe.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: relay
+            {{- include "rustdesk-server.tplvalues" (dict "value" (omit $hbbr.livenessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if $hbbr.customReadinessProbe }}
+          readinessProbe: {{- include "rustdesk-server.tplvalues" (dict "value" $hbbr.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if $hbbr.readinessProbe.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: relay
+            {{- include "rustdesk-server.tplvalues" (dict "value" (omit $hbbr.readinessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if $hbbr.customStartupProbe }}
+          startupProbe: {{- include "rustdesk-server.tplvalues" (dict "value" $hbbr.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if $hbbr.startupProbe.enabled }}
+          startupProbe:
+            tcpSocket:
+              port: relay
+            {{- include "rustdesk-server.tplvalues" (dict "value" (omit $hbbr.startupProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with $hbbr.lifecycleHooks }}
+          lifecycle: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 12 }}
+          {{- end }}
+          resources: {{- include "rustdesk-server.resources" (dict "component" $hbbr "context" $) | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ $hbbr.workingDir | quote }}
+            {{- if $mountKeys }}
+            - name: keys
+              mountPath: {{ printf "%s/id_ed25519" $hbbr.workingDir | quote }}
+              subPath: id_ed25519
+              readOnly: true
+            - name: keys
+              mountPath: {{ printf "%s/id_ed25519.pub" $hbbr.workingDir | quote }}
+              subPath: id_ed25519.pub
+              readOnly: true
+            {{- end }}
+            {{- with $hbbr.blacklist }}
+            - name: lists
+              mountPath: {{ printf "%s/blacklist.txt" $hbbr.workingDir | quote }}
+              subPath: blacklist.txt
+              readOnly: true
+            {{- end }}
+            {{- with $hbbr.blocklist }}
+            - name: lists
+              mountPath: {{ printf "%s/blocklist.txt" $hbbr.workingDir | quote }}
+              subPath: blocklist.txt
+              readOnly: true
+            {{- end }}
+            {{- with $hbbr.extraVolumeMounts }}
+            {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 12 }}
+            {{- end }}
+        {{- with $hbbr.sidecars }}
+        {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if $mountKeys }}
+        - name: keys
+          secret:
+            secretName: {{ include "rustdesk-server.secretName" . }}
+            defaultMode: 0400
+            items:
+              - key: {{ .Values.auth.privateKeySecretKey }}
+                path: id_ed25519
+              - key: {{ .Values.auth.publicKeySecretKey }}
+                path: id_ed25519.pub
+        {{- end }}
+        {{- if or $hbbr.blacklist $hbbr.blocklist }}
+        - name: lists
+          configMap:
+            name: {{ include "rustdesk-server.hbbr.fullname" . }}
+        {{- end }}
+        {{- if not $hbbr.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- else if $hbbr.persistence.existingClaim }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ tpl $hbbr.persistence.existingClaim $ }}
+        {{- end }}
+        {{- with $hbbr.extraVolumes }}
+        {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 8 }}
+        {{- end }}
+  {{- if and $hbbr.persistence.enabled (not $hbbr.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels: {{- include "rustdesk-server.selectorLabels" (dict "component" $component "context" $) | nindent 10 }}
+          {{- with $hbbr.persistence.labels }}
+          {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 10 }}
+          {{- end }}
+        {{- with $hbbr.persistence.annotations }}
+        annotations: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- range $hbbr.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        resources:
+          requests:
+            storage: {{ $hbbr.persistence.size | quote }}
+        {{- include "rustdesk-server.storageClass" (dict "persistence" $hbbr.persistence "context" $) | nindent 8 }}
+        {{- with $hbbr.persistence.selector }}
+        selector: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 10 }}
+        {{- end }}
+  {{- end }}
+{{- end }}

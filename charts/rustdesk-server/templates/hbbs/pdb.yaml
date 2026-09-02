@@ -1,0 +1,20 @@
+{{- if and .Values.hbbs.enabled .Values.hbbs.pdb.create }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "rustdesk-server.hbbs.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" "hbbs" "context" $) | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.hbbs.pdb.minAvailable }}
+  minAvailable: {{ .Values.hbbs.pdb.minAvailable }}
+  {{- end }}
+  {{- if or .Values.hbbs.pdb.maxUnavailable (not .Values.hbbs.pdb.minAvailable) }}
+  maxUnavailable: {{ .Values.hbbs.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "rustdesk-server.selectorLabels" (dict "component" "hbbs" "context" $) | nindent 6 }}
+{{- end }}

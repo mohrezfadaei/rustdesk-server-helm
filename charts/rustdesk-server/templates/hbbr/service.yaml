@@ -1,0 +1,64 @@
+{{- if .Values.hbbr.enabled }}
+{{- $component := "hbbr" }}
+{{- $hbbr := .Values.hbbr }}
+{{- $service := $hbbr.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rustdesk-server.hbbr.fullname" . }}
+  namespace: {{ include "rustdesk-server.namespace" . | quote }}
+  labels: {{- include "rustdesk-server.labels" (dict "component" $component "context" $) | nindent 4 }}
+  {{- if or $service.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- with $service.annotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+    {{- with .Values.commonAnnotations }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ $service.type }}
+  {{- with $service.clusterIP }}
+  clusterIP: {{ . }}
+  {{- end }}
+  {{- if eq $service.type "LoadBalancer" }}
+  {{- with $service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with $service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}
+  {{- with $service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- if or (eq $service.type "LoadBalancer") (eq $service.type "NodePort") }}
+  externalTrafficPolicy: {{ $service.externalTrafficPolicy | quote }}
+  {{- end }}
+  sessionAffinity: {{ $service.sessionAffinity }}
+  {{- with $service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: relay
+      port: {{ $service.ports.relay | int64 }}
+      targetPort: relay
+      protocol: TCP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.relay }}
+      nodePort: {{ $service.nodePorts.relay | int64 }}
+      {{- end }}
+    {{- if $hbbr.websocket.enabled }}
+    - name: ws-relay
+      port: {{ $service.ports.websocket | int64 }}
+      targetPort: ws-relay
+      protocol: TCP
+      {{- if and (or (eq $service.type "LoadBalancer") (eq $service.type "NodePort")) $service.nodePorts.websocket }}
+      nodePort: {{ $service.nodePorts.websocket | int64 }}
+      {{- end }}
+    {{- end }}
+    {{- with $service.extraPorts }}
+    {{- include "rustdesk-server.tplvalues" (dict "value" . "context" $) | nindent 4 }}
+    {{- end }}
+  selector: {{- include "rustdesk-server.selectorLabels" (dict "component" $component "context" $) | nindent 4 }}
+{{- end }}

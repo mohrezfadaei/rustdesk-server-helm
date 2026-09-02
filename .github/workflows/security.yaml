@@ -1,0 +1,46 @@
+name: Security
+
+on:
+  push:
+    paths:
+      - "charts/**"
+      - ".github/workflows/security.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  misconfig:
+    name: trivy config
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Report all misconfigurations
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: charts/rustdesk-server
+          format: table
+          exit-code: "0"
+
+      - name: Scan chart for misconfigurations
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: charts/rustdesk-server
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Upload results to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-config

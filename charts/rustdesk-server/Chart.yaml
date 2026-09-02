@@ -26,4 +26,13 @@ maintainers:
 icon: https://github.com/mohrezfadaei/rustdesk-server-helm/blob/main/assets/icon.png
 
 annotations:
-  artifacthub.io/category: networking
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: source
+      url: https://github.com/mohrezfadaei/rustdesk-server-helm
+    - name: support
+      url: https://github.com/mohrezfadaei/rustdesk-server-helm/issues
+    - name: RustDesk
+      url: https://github.com/rustdesk/rustdesk
+  artifacthub.io/changes: |
+    - Initial release of the RustDesk Server Helm chart

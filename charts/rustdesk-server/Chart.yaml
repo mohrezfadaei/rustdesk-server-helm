@@ -1,0 +1,29 @@
+apiVersion: v2
+name: rustdesk-server
+description: A production-ready Helm chart for deploying RustDesk Server on Kubernetes.
+type: application
+
+version: 0.1.0
+appVersion: "1.16.0"
+
+keywords:
+  - rustdesk
+  - rustdesk-server
+  - remote-desktop
+  - remote-access
+  - self-hosted
+
+home: https://github.com/mohrezfadaei/rustdesk-server-helm
+
+sources:
+  - https://github.com/mohrezfadaei/rustdesk-server-helm
+  - https://github.com/rustdesk/rustdesk-server
+
+maintainers:
+  - name: Mohamad Reza Fadaei
+    email: mohrezfadaei@gmail.com
+
+icon: https://github.com/mohrezfadaei/rustdesk-server-helm/blob/main/assets/icon.png
+
+annotations:
+  artifacthub.io/category: networking

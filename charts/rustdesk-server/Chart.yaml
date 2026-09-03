@@ -35,4 +35,5 @@ annotations:
     - name: RustDesk
       url: https://github.com/rustdesk/rustdesk
   artifacthub.io/changes: |
-    - Initial release of the RustDesk Server Helm chart
+    - kind: fixed
+      description: Icon now uses a raw image URL so the chart logo renders

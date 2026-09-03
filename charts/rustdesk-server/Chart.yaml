@@ -23,7 +23,7 @@ maintainers:
   - name: Mohamad Reza Fadaei
     email: mohrezfadaei@gmail.com
 
-icon: https://github.com/mohrezfadaei/rustdesk-server-helm/blob/main/assets/icon.png
+icon: https://raw.githubusercontent.com/mohrezfadaei/rustdesk-server-helm/main/assets/icon.png
 
 annotations:
   artifacthub.io/license: Apache-2.0

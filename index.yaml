@@ -14,7 +14,42 @@ entries:
           url: https://github.com/rustdesk/rustdesk
     apiVersion: v2
     appVersion: 1.1.16
-    created: "2026-09-02T23:51:21.724794134Z"
+    created: "2026-09-03T00:01:37.476363266Z"
+    description: A production-ready Helm chart for deploying RustDesk Server on Kubernetes.
+    digest: 38345fa2290e1b10afa5a9e2ffda581c30a995623cb65fe793cfd4e4d52bbee8
+    home: https://github.com/mohrezfadaei/rustdesk-server-helm
+    icon: https://github.com/mohrezfadaei/rustdesk-server-helm/blob/main/assets/icon.png
+    keywords:
+    - rustdesk
+    - rustdesk-server
+    - remote-desktop
+    - remote-access
+    - self-hosted
+    maintainers:
+    - email: mohrezfadaei@gmail.com
+      name: Mohamad Reza Fadaei
+    name: rustdesk-server
+    sources:
+    - https://github.com/mohrezfadaei/rustdesk-server-helm
+    - https://github.com/rustdesk/rustdesk-server
+    type: application
+    urls:
+    - https://mohrezfadaei.github.io/rustdesk-server-helm/rustdesk-server-0.1.3.tgz
+    version: 0.1.3
+  - annotations:
+      artifacthub.io/changes: |
+        - Initial release of the RustDesk Server Helm chart
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/mohrezfadaei/rustdesk-server-helm
+        - name: support
+          url: https://github.com/mohrezfadaei/rustdesk-server-helm/issues
+        - name: RustDesk
+          url: https://github.com/rustdesk/rustdesk
+    apiVersion: v2
+    appVersion: 1.1.16
+    created: "2026-09-03T00:01:37.474076708Z"
     description: A production-ready Helm chart for deploying RustDesk Server on Kubernetes.
     digest: 0afbd2a29d053a710813c3c0965b11f47faf739c460c796be8a983ee3fe615f7
     home: https://github.com/mohrezfadaei/rustdesk-server-helm
@@ -49,7 +84,7 @@ entries:
           url: https://github.com/rustdesk/rustdesk
     apiVersion: v2
     appVersion: 1.1.16
-    created: "2026-09-02T23:51:21.723219859Z"
+    created: "2026-09-03T00:01:37.472180074Z"
     description: A production-ready Helm chart for deploying RustDesk Server on Kubernetes.
     digest: a7273800ffc5981f41c5922e68e75787d3d6dae0664d66c2439ed6de84c10dbe
     home: https://github.com/mohrezfadaei/rustdesk-server-helm
@@ -84,7 +119,7 @@ entries:
           url: https://github.com/rustdesk/rustdesk
     apiVersion: v2
     appVersion: 1.1.16
-    created: "2026-09-02T23:51:21.720842212Z"
+    created: "2026-09-03T00:01:37.470236971Z"
     description: A production-ready Helm chart for deploying RustDesk Server on Kubernetes.
     digest: 26de8dd19b34e64fbbfaea73bf8bc150d05521a1189f1ec2169f59c3236464d7
     home: https://github.com/mohrezfadaei/rustdesk-server-helm
@@ -106,4 +141,4 @@ entries:
     urls:
     - https://mohrezfadaei.github.io/rustdesk-server-helm/rustdesk-server-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-02T23:51:21.719099064Z"
+generated: "2026-09-03T00:01:37.467402675Z"

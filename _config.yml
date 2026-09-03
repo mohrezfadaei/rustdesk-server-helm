@@ -5,5 +5,5 @@ description: Helm chart for self-hosting RustDesk Server on Kubernetes
 show_downloads: false
 
 # Both replaced by .github/workflows/release.yaml at publish time
-chart_version: 0.1.2
+chart_version: 0.1.3
 chart_repo_url: https://mohrezfadaei.github.io/rustdesk-server-helm
